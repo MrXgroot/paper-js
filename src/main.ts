@@ -15,7 +15,6 @@ document.getElementById("debug-toggle")?.addEventListener("change", (e) => {
 
 document.getElementById("bounce-slider")?.addEventListener("change", (e) => {
   const val = parseInt((e.target as HTMLInputElement).value);
-  console.log(val);
   EngineConfig.physics.bounce = val;
   document.getElementById("bounce-val")!.innerHTML = val.toString();
 });

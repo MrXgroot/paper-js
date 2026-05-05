@@ -1,7 +1,9 @@
 {
-  "name": "paper",
+  "name": "paper-js",
+  "description": "2D physics engine using ECS architecture",
+  "author": "Sukesh Acharya",
+  "license": "MIT",
   "version": "1.0.0",
-  "description": "",
   "main": "index.js",
   "scripts": {
     "dev": "vite",
@@ -9,8 +11,6 @@
     "preview": "vite preview"
   },
   "keywords": [],
-  "author": "",
-  "license": "ISC",
   "type": "module",
   "devDependencies": {
     "typescript": "^6.0.3",
