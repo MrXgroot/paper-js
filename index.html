@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+  </head>
+  <style>
+    #ui-overlay {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      background: rgba(255, 255, 255, 0.08);
+      color: rgb(237, 237, 237);
+      font-family: "Poppins", sans-serif;
+      padding: 15px;
+      border-radius: 8px;
+      pointer-events: all;
+    }
+    .panel {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      opacity: 0.8;
+    }
+    h3 {
+      margin: 0 0 10px 0;
+      font-size: 14px;
+    }
+    label {
+      font-size: 12px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+    hr {
+      border: 0;
+      border-top: 1px solid #333;
+      margin: 5px 0;
+    }
+    input[type="range"] {
+      width: 100%;
+    }
+    button {
+      height: 30px;
+      background-color: rgba(255, 255, 255, 0.1);
+      color: #fff;
+      border: none;
+      outline: none;
+      border-radius: 5px;
+    }
+  </style>
+  <body>
+    <div class="canvas">
+      <canvas class="canvas" id="game" style="width: 800px; height: 600px; margin-left: auto; margin-right: auto"></canvas>
+    </div>
+
+    <div id="ui-overlay">
+      <div class="panel">
+        <h3>Engine Debug</h3>
+        <label><input type="checkbox" id="debug-toggle" /> Debug Mode</label>
+        <hr />
+        <label><input type="checkbox" id="show-vel" checked /> Velocity Vectors</label>
+        <label><input type="checkbox" id="show-aabb" checked /> Bounding Boxes</label>
+        <label><input type="checkbox" id="show-contacts" checked /> Contact Points</label>
+        <hr />
+
+        <label>Substeps: <span id="substep-val">8</span></label>
+        <input type="range" id="substep-slider" min="1" max="16" value="8" />
+
+        <label>bounce: <span id="bounce-val">0.5</span></label>
+        <input type="range" id="bounce-slider" min="0" max="1" value="0.5" step="0.1" />
+
+        <button id="restart">Reload</button>
+      </div>
+    </div>
+  </body>
+  <script type="module" src="/src/main.ts"></script>
+</html>
