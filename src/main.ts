@@ -15,7 +15,7 @@ document.getElementById("debug-toggle")?.addEventListener("change", (e) => {
 
 document.getElementById("bounce-slider")?.addEventListener("change", (e) => {
   const val = parseInt((e.target as HTMLInputElement).value);
-  EngineConfig.physics.bounce = val;
+  EngineConfig.physics.bounce = val / 100;
   document.getElementById("bounce-val")!.innerHTML = val.toString();
 });
 document.getElementById("show-vel")?.addEventListener("change", (e) => {
@@ -26,6 +26,10 @@ document.getElementById("substep-slider")?.addEventListener("input", (e) => {
   const val = parseInt((e.target as HTMLInputElement).value);
   EngineConfig.physics.subSteps = val;
   document.getElementById("substep-val")!.innerText = val.toString();
+});
+
+document.getElementById("reload")?.addEventListener("click", () => {
+  reload();
 });
 
 const canvas = document.getElementById("game") as HTMLCanvasElement;
@@ -78,8 +82,13 @@ function spawnDebris(count: number, bounce: number = 0) {
   }
 }
 
+function reload() {
+  world.clear();
+  createEnvironment();
+  spawnDebris(EngineConfig.world.particleCount, EngineConfig.physics.bounce);
+}
 createEnvironment();
-spawnDebris(4, 0.5);
+spawnDebris(1, 0.5);
 
 let lastTime = performance.now();
 let animationId: number;

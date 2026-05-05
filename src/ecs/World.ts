@@ -13,7 +13,11 @@ export class World {
     this.entities.add(entity);
     return entity;
   }
-
+  clear() {
+    this.entities = new Set<Entity>();
+    this.nextEntityId = 0;
+    this.components = new Map<ComponentType, Map<Entity, any>>();
+  }
   addComponent(entity: Entity, component: Component) {
     if (!this.components.has(component.type)) {
       this.components.set(component.type, new Map());
