@@ -7,9 +7,12 @@
     <title>Document</title>
   </head>
   <style>
+    * {
+      margin: 0px;
+    }
     #ui-overlay {
       position: absolute;
-
+      width: 130px;
       top: 10px;
       right: 10px;
       background: rgba(0, 0, 0, 0.8);
@@ -52,30 +55,54 @@
       outline: none;
       border-radius: 5px;
     }
-    .canvas {
-      position: relative;
+    canvas {
       display: block;
+    }
+    #settings {
+      overflow: hidden;
+      max-height: 0;
+      opacity: 0;
+      transform: translateY(-10px) scale(0.98);
+
+      transition:
+        max-height 0.4s ease,
+        opacity 0.25s ease,
+        transform 0.35s ease;
+      pointer-events: none;
+    }
+
+    body.debug #settings {
+      max-height: 500px;
+      opacity: 1;
+      transform: translateY(0) scale(1);
+      pointer-events: auto;
     }
   </style>
   <body>
     <div class="canvas">
-      <canvas class="canvas" id="game" style="width: 800px; height: 600px; margin-left: auto; margin-right: auto"></canvas>
+      <canvas class="canvas" id="game" style="width: 100svw; height: 100svh; margin-left: auto; margin-right: auto"></canvas>
 
       <div id="ui-overlay">
         <div class="panel">
           <h3>Engine Debug</h3>
           <label><input type="checkbox" id="debug-toggle" /> Debug Mode</label>
-          <hr />
-          <label><input type="checkbox" id="show-vel" checked /> Velocity Vectors</label>
-          <label><input type="checkbox" id="show-aabb" checked /> Bounding Boxes</label>
-          <label><input type="checkbox" id="show-contacts" checked /> Contact Points</label>
-          <hr />
 
-          <label>Substeps: <span id="substep-val">8</span></label>
-          <input type="range" id="substep-slider" min="1" max="16" value="8" />
+          <hr />
+          <div id="settings">
+            <label><input type="checkbox" id="show-vel" checked /> Velocity Vectors</label>
+            <label><input type="checkbox" id="show-aabb" checked /> Bounding Boxes</label>
+            <label><input type="checkbox" id="show-contacts" checked /> Contact Points</label>
+            <hr />
 
-          <label>bounce: <span id="bounce-val">5</span></label>
-          <input type="range" id="bounce-slider" min="0" max="100" value="5" />
+            <label>Substeps: <span id="substep-val">8</span></label>
+            <input type="range" id="substep-slider" min="1" max="16" value="8" />
+
+            <label>bounce: <span id="bounce-val">5</span></label>
+            <input type="range" id="bounce-slider" min="0" max="100" value="150" />
+
+            <label>Particles: <span id="particle-count">50</span></label>
+            <input type="range" id="particle-count-slider" min="0" max="200" value="50" />
+          </div>
 
           <button id="reload">Reload</button>
         </div>

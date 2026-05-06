@@ -8,51 +8,27 @@ import { Vector2D } from "./core/Vector2D";
 import { CollisionSystem } from "./systems/CollisionSystem";
 import { Collider } from "./components/Collider";
 import { EngineConfig } from "./utils/EngineConfig";
-document.getElementById("debug-toggle")?.addEventListener("change", (e) => {
-  EngineConfig.debug.enabled = (e.target as HTMLInputElement).checked;
-  world.debugMode = EngineConfig.debug.enabled; // Sync with ECS world
-});
+import { initializeUI } from "./ui";
 
-document.getElementById("bounce-slider")?.addEventListener("change", (e) => {
-  const val = parseInt((e.target as HTMLInputElement).value);
-  EngineConfig.physics.bounce = val / 100;
-  document.getElementById("bounce-val")!.innerHTML = val.toString();
-});
-document.getElementById("show-vel")?.addEventListener("change", (e) => {
-  EngineConfig.debug.showVelocity = (e.target as HTMLInputElement).checked;
-});
-
-document.getElementById("substep-slider")?.addEventListener("input", (e) => {
-  const val = parseInt((e.target as HTMLInputElement).value);
-  EngineConfig.physics.subSteps = val;
-  document.getElementById("substep-val")!.innerText = val.toString();
-});
-
-document.getElementById("reload")?.addEventListener("click", () => {
-  reload();
-});
-
+//---Core Engine setup-----
 const canvas = document.getElementById("game") as HTMLCanvasElement;
 const world = new World();
 const renderer = new RenderSystem(canvas);
 const physics = new PhysicsSystem();
 const collision = new CollisionSystem();
 
-const CANVAS_WIDTH = canvas.width;
-const CANVAS_HEIGHT = canvas.height;
+let lastTime = performance.now();
+let animationId: number;
 
-function createBody(x: number, y: number, w: number, h: number, color: string, isStatic: boolean = false, bounce: number = 0) {
+const isMobile = window.innerWidth < 768;
+
+function createBody(x: number, y: number, w: number, h: number, color: string, isStatic = false, bounce = 0) {
   const entity = world.createEntity();
-
-  const t = new Transform(new Vector2D(x, y));
-  world.addComponent(entity, t);
+  world.addComponent(entity, new Transform(new Vector2D(x, y)));
   world.addComponent(entity, new Sprite(w, h, color));
-
-  const p = new Physics(new Vector2D(0, 0));
-  world.addComponent(entity, p);
+  world.addComponent(entity, new Physics(new Vector2D(0, 0)));
 
   const c = new Collider(w, h);
-
   c.bounce = bounce;
   c.isStatic = isStatic;
   world.addComponent(entity, c);
@@ -60,61 +36,85 @@ function createBody(x: number, y: number, w: number, h: number, color: string, i
   return entity;
 }
 
+//Environment-setup
 function createEnvironment() {
-  const thickness = 100;
-  createBody(CANVAS_WIDTH / 2, CANVAS_HEIGHT - thickness - 20, CANVAS_WIDTH * 2, thickness, "#2a2a2a", true);
-  createBody(-thickness + 70, CANVAS_HEIGHT / 2, thickness, CANVAS_HEIGHT * 2, "#2c3e50", true);
-  createBody(CANVAS_WIDTH - 170, CANVAS_HEIGHT / 2, thickness, CANVAS_HEIGHT * 2, "#2c3e50", true);
-  createBody(200, 300, 40, 20, "#34495e", true, 0);
-  createBody(280, 360, 40, 20, "#34495e", true, 0);
-  createBody(CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2, 200, 20, "#34495e", true, 0);
+  const w = canvas.width;
+  const h = canvas.height;
+  const thickness = 60;
+  const isMobile = w < 768;
+
+  // --- Boundaries ---
+  createBody(w / 2, h, w * 2, thickness, "#bcbcbc", true);
+  createBody(0, h / 2, thickness, h * 2, "#2c3e50", true);
+  createBody(w, h / 2, thickness, h * 2, "#2c3e50", true);
+  if (isMobile) {
+    createBody(w * 0.5, h * 0.6, w * 0.4, 30, "#34495e", true);
+  } else {
+    const platformWidth = w * 0.2;
+    const platformHeight = 30;
+
+    createBody(w * 0.25, h * 0.4, platformWidth, platformHeight, "#34495e", true);
+    createBody(w * 0.5, h * 0.65, platformWidth, platformHeight, "#34495e", true);
+    createBody(w * 0.75, h * 0.4, platformWidth, platformHeight, "#34495e", true);
+  }
 }
 
-function spawnDebris(count: number, bounce: number = 0) {
-  for (let i = 0; i < count; i++) {
-    const w = 30;
-    const h = 30;
-    const x = Math.random() * 500;
-    const y = Math.random() * -500;
+function spawnDebris() {
+  const count = EngineConfig.world.particleCount;
+  const bounce = EngineConfig.physics.bounce;
 
+  for (let i = 0; i < count; i++) {
+    const size = 30;
+    const x = Math.random() * (canvas.width - size) + size / 2;
+    const y = Math.random() * -800; // Spawn above viewport
     const color = `hsl(${Math.random() * 360}, 70%, 60%)`;
-    createBody(x, y, w, h, color, false, bounce);
+    createBody(x, y, size, size, color, false, bounce);
   }
 }
 
 function reload() {
   world.clear();
+  resizeCanvas();
   createEnvironment();
-  spawnDebris(EngineConfig.world.particleCount, EngineConfig.physics.bounce);
+  spawnDebris();
 }
-createEnvironment();
-spawnDebris(1, 0.5);
 
-let lastTime = performance.now();
-let animationId: number;
 function loop(currentTime: number) {
-  //phsyics update
-  let dt = (currentTime - lastTime) / 1000;
+  const dt = Math.min((currentTime - lastTime) / 1000, 0.016);
   lastTime = currentTime;
+
+  //1. physics - integration
   physics.update(world, dt);
 
-  //substepping for collission
+  //2. substepping for collission
   const subSteps = EngineConfig.physics.subSteps;
+  const subDt = dt / subSteps;
   for (let i = 0; i < subSteps; i++) {
-    collision.update(world, dt / subSteps);
+    collision.update(world, subDt);
   }
 
-  //rendering
+  // 3. Render
   renderer.update(world);
   animationId = requestAnimationFrame(loop);
 }
 
+// --- Initialization ---
+window.addEventListener("resize", reload);
+initializeUI(reload);
+reload(); // Initial call
+requestAnimationFrame(loop);
 requestAnimationFrame(loop);
 
+//HMR Cleanup
 //@ts-ignore
 if (import.meta.hot) {
   //@ts-ignore
   import.meta.hot.dispose(() => {
     cancelAnimationFrame(animationId);
   });
+}
+
+function resizeCanvas() {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
 }

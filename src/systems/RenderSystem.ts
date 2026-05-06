@@ -7,22 +7,20 @@ import { Debug } from "../components/Debug";
 import { EngineConfig } from "../utils/EngineConfig";
 export class RenderSystem {
   private ctx: CanvasRenderingContext2D;
-  private width: number;
-  private height: number;
+
   constructor(canvas: HTMLCanvasElement) {
     this.ctx = canvas.getContext("2d")!;
     this.setupCanvas(canvas);
-
-    this.width = canvas.width;
-    this.height = canvas.height;
   }
 
   private setupCanvas(canvas: HTMLCanvasElement) {
     const dpr = window.devicePixelRatio || 1;
     const rect = canvas.getBoundingClientRect();
+
     canvas.width = rect.width * dpr;
     canvas.height = rect.height * dpr;
-    this.ctx.scale(dpr, dpr);
+
+    this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
     this.ctx.imageSmoothingEnabled = true;
     this.ctx.imageSmoothingQuality = "high";
@@ -30,11 +28,13 @@ export class RenderSystem {
 
   update(world: World) {
     //1. Clear screen
-    this.ctx.clearRect(0, 0, this.width, this.height);
+    this.ctx.clearRect(0, 0, window.innerWidth, window.innerHeight);
 
     //Fill background to dark color
     this.ctx.fillStyle = "#1a1a1a";
+
     this.ctx.fillRect(0, 0, window.innerWidth, window.innerHeight);
+
     const entities = world.query("transform", "sprite");
 
     for (const entity of entities) {
