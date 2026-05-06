@@ -15,12 +15,23 @@ export class RenderSystem {
 
   private setupCanvas(canvas: HTMLCanvasElement) {
     const dpr = window.devicePixelRatio || 1;
-    const rect = canvas.getBoundingClientRect();
 
-    canvas.width = rect.width * dpr;
-    canvas.height = rect.height * dpr;
+    const width = window.innerWidth;
+    const height = window.innerHeight;
 
-    this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    // CSS size
+    canvas.style.width = `${width}px`;
+    canvas.style.height = `${height}px`;
+
+    // Real pixel size
+    canvas.width = width * dpr;
+    canvas.height = height * dpr;
+
+    // Reset transforms
+    this.ctx.setTransform(1, 0, 0, 1, 0, 0);
+
+    // Scale to DPR
+    this.ctx.scale(dpr, dpr);
 
     this.ctx.imageSmoothingEnabled = true;
     this.ctx.imageSmoothingQuality = "high";
@@ -32,7 +43,6 @@ export class RenderSystem {
 
     //Fill background to dark color
     this.ctx.fillStyle = "#1a1a1a";
-
     this.ctx.fillRect(0, 0, window.innerWidth, window.innerHeight);
 
     const entities = world.query("transform", "sprite");
@@ -60,7 +70,7 @@ export class RenderSystem {
 
       //-----Debug renderer-----
 
-      if (world.debugMode) {
+      if (EngineConfig.debug.enabled) {
         this.drawDebugOverlay(transform, sprite, physics, debugInfo);
       }
     }

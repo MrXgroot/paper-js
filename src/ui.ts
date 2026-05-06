@@ -31,4 +31,8 @@ export function initializeUI(onReload: () => void) {
   document.getElementById("show-vel")?.addEventListener("change", (e) => {
     EngineConfig.debug.showVelocity = (e.target as HTMLInputElement).checked;
   });
+
+  document.getElementById("show-aabb")?.addEventListener("change", (e) => {
+    EngineConfig.debug.showBoundingBox = (e.target as HTMLInputElement).checked;
+  });
 }
