@@ -66,7 +66,7 @@ function spawnDebris() {
   for (let i = 0; i < count; i++) {
     const size = 30;
     const x = Math.random() * (canvas.width - size) + size / 2;
-    const y = Math.random() * -800; // Spawn above viewport
+    const y = Math.random() * -800;
     const color = `hsl(${Math.random() * 360}, 70%, 60%)`;
     createBody(x, y, size, size, color, false, bounce);
   }
@@ -80,7 +80,7 @@ function reload() {
 }
 
 function loop(currentTime: number) {
-  const dt = Math.min((currentTime - lastTime) / 1000, 0.016);
+  const dt = (currentTime - lastTime) / 1000;
   lastTime = currentTime;
 
   //1. physics - integration
@@ -101,8 +101,7 @@ function loop(currentTime: number) {
 // --- Initialization ---
 window.addEventListener("resize", reload);
 initializeUI(reload);
-reload(); // Initial call
-requestAnimationFrame(loop);
+reload();
 requestAnimationFrame(loop);
 
 //HMR Cleanup
