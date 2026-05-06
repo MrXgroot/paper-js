@@ -44,7 +44,7 @@ function createEnvironment() {
   const isMobile = w < 768;
 
   // --- Boundaries ---
-  createBody(w / 2, h, w * 2, thickness, "#bcbcbc", true);
+  createBody(w / 2, h, w * 2, thickness, "#2c3e50", true);
   createBody(0, h / 2, thickness, h * 2, "#2c3e50", true);
   createBody(w, h / 2, thickness, h * 2, "#2c3e50", true);
   if (isMobile) {
