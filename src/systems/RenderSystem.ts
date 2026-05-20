@@ -3,121 +3,219 @@ import { Transform } from "../components/Transform";
 import { Sprite } from "../components/Sprite";
 import { Physics } from "../components/Physics";
 import { Collider } from "../components/Collider";
-import { Debug } from "../components/Debug";
 import { EngineConfig } from "../utils/EngineConfig";
+import { CollisionSystem } from "./CollisionSystem";
+
 export class RenderSystem {
   private ctx: CanvasRenderingContext2D;
+  private cssWidth = 0;
+  private cssHeight = 0;
+  private dpr = 1;
 
-  constructor(canvas: HTMLCanvasElement) {
+  constructor(private readonly canvas: HTMLCanvasElement) {
     this.ctx = canvas.getContext("2d")!;
-    this.setupCanvas(canvas);
+    this.resize();
   }
 
-  private setupCanvas(canvas: HTMLCanvasElement) {
-    const dpr = window.devicePixelRatio || 1;
+  get width(): number {
+    return this.cssWidth;
+  }
 
-    const width = window.innerWidth;
-    const height = window.innerHeight;
+  get height(): number {
+    return this.cssHeight;
+  }
 
-    // CSS size
-    canvas.style.width = `${width}px`;
-    canvas.style.height = `${height}px`;
+  resize(): void {
+    this.dpr = Math.max(1, window.devicePixelRatio || 1);
+    this.cssWidth = window.innerWidth;
+    this.cssHeight = window.innerHeight;
 
-    // Real pixel size
-    canvas.width = width * dpr;
-    canvas.height = height * dpr;
+    this.canvas.style.width = `${this.cssWidth}px`;
+    this.canvas.style.height = `${this.cssHeight}px`;
+    this.canvas.width = Math.floor(this.cssWidth * this.dpr);
+    this.canvas.height = Math.floor(this.cssHeight * this.dpr);
 
-    // Reset transforms
-    this.ctx.setTransform(1, 0, 0, 1, 0, 0);
-
-    // Scale to DPR
-    this.ctx.scale(dpr, dpr);
-
+    this.ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
     this.ctx.imageSmoothingEnabled = true;
     this.ctx.imageSmoothingQuality = "high";
   }
 
-  update(world: World) {
-    //1. Clear screen
-    this.ctx.clearRect(0, 0, window.innerWidth, window.innerHeight);
+  update(world: World, alpha: number, collisionSystem: CollisionSystem): void {
+    this.ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
+    this.ctx.clearRect(0, 0, this.cssWidth, this.cssHeight);
+    this.drawBackground();
 
-    //Fill background to dark color
-    this.ctx.fillStyle = "#1a1a1a";
-    this.ctx.fillRect(0, 0, window.innerWidth, window.innerHeight);
+    if (EngineConfig.debug.enabled && EngineConfig.debug.showGrid) {
+      this.drawGrid();
+    }
 
-    const entities = world.query("transform", "sprite");
-
+    const entities = world.query("transform", "sprite", "collider");
     for (const entity of entities) {
       const transform = world.getComponent<Transform>(entity, "transform")!;
       const sprite = world.getComponent<Sprite>(entity, "sprite")!;
-      const physics = world.getComponent<Physics>(entity, "physics")!;
-      const debugInfo = world.getComponent<Debug>(entity, "debug")!;
+      const collider = world.getComponent<Collider>(entity, "collider")!;
+      const physics = world.getComponent<Physics>(entity, "physics");
 
-      //----PRIMARY RENDERER---
-      this.ctx.save();
-      this.ctx.translate(transform.position.x, transform.position.y);
-      this.ctx.rotate(transform.angle);
+      const x = transform.previousPosition.x + (transform.position.x - transform.previousPosition.x) * alpha;
+      const y = transform.previousPosition.y + (transform.position.y - transform.previousPosition.y) * alpha;
+      const angle = transform.previousAngle + (transform.angle - transform.previousAngle) * alpha;
 
-      //----Shadow rendering ----- add toggle
-      this.ctx.shadowColor = "rgba(0,0,0,0.34)";
-      this.ctx.shadowBlur = 20;
-
-      //Main sprite
-      this.ctx.fillStyle = sprite.color;
-
-      this.ctx.fillRect(-sprite.width / 2, -sprite.height / 2, sprite.width, sprite.height);
-      this.ctx.restore();
-
-      //-----Debug renderer-----
+      this.drawShape(x, y, angle, sprite, collider, physics);
 
       if (EngineConfig.debug.enabled) {
-        this.drawDebugOverlay(transform, sprite, physics, debugInfo);
+        this.drawEntityDebug(x, y, angle, transform, collider, physics);
       }
+    }
+
+    if (EngineConfig.debug.enabled) {
+      this.drawCollisionDebug(collisionSystem);
     }
   }
 
-  private drawDebugOverlay(transform: any, sprite: any, physics: any, debugInfo: any) {
-    const { x, y } = transform.position;
-    const { width, height } = sprite;
+  private drawBackground(): void {
+    const gradient = this.ctx.createLinearGradient(0, 0, this.cssWidth, this.cssHeight);
+    gradient.addColorStop(0, "#10131a");
+    gradient.addColorStop(0.55, "#151922");
+    gradient.addColorStop(1, "#0b0d12");
+    this.ctx.fillStyle = gradient;
+    this.ctx.fillRect(0, 0, this.cssWidth, this.cssHeight);
+  }
 
+  private drawShape(x: number, y: number, angle: number, sprite: Sprite, collider: Collider, physics?: Physics): void {
     this.ctx.save();
-    this.ctx.lineJoin = "round";
-    this.ctx.lineCap = "round";
     this.ctx.translate(x, y);
-    this.ctx.rotate(transform.angle);
+    this.ctx.rotate(angle);
+    this.ctx.shadowColor = `${sprite.color}66`;
+    this.ctx.shadowBlur = 16;
+    this.ctx.fillStyle = physics?.isSleeping && EngineConfig.debug.showSleeping ? "#75808f" : sprite.color;
 
-    //-----1.Bounding box overlay------
-    if (EngineConfig.debug.showBoundingBox) {
-      this.ctx.fillStyle = "rgba(0,0,0,0.5)";
-      this.ctx.fillRect(-width / 2, -height / 2, width, height);
-      this.ctx.strokeStyle = "#00ffff";
-      this.ctx.setLineDash([5, 5]);
-      this.ctx.strokeRect(-width / 2, -height / 2, width, height);
-    }
-
-    //2. Velocity vector
-    if (EngineConfig.debug.showVelocity && physics.velocity) {
+    if (collider.shape === "circle") {
+      this.ctx.beginPath();
+      this.ctx.arc(0, 0, collider.width / 2, 0, Math.PI * 2);
+      this.ctx.fill();
+      this.ctx.shadowBlur = 0;
+      this.ctx.strokeStyle = "rgba(255,255,255,0.22)";
       this.ctx.beginPath();
       this.ctx.moveTo(0, 0);
-
-      this.ctx.lineTo(physics.velocity.x, physics.velocity.y);
-      this.ctx.strokeStyle = " #00fff";
-      this.ctx.setLineDash([]);
+      this.ctx.lineTo(collider.width / 2, 0);
       this.ctx.stroke();
-    }
-
-    //contact pints
-    if (EngineConfig.debug.showContacts && debugInfo?.contactPoint) {
-      const cp = debugInfo.contactPoint;
-      this.ctx.strokeStyle = "#ff4444";
+    } else if (collider.vertices.length > 0) {
       this.ctx.beginPath();
-      this.ctx.moveTo(cp.x - 5, cp.y);
-      this.ctx.lineTo(cp.x + 4, cp.y);
-      this.ctx.moveTo(cp.x, cp.y - 4);
-      this.ctx.lineTo(cp.x, cp.y + 4);
-      this.ctx.stroke();
+      this.ctx.moveTo(collider.vertices[0].x, collider.vertices[0].y);
+      for (let i = 1; i < collider.vertices.length; i++) {
+        this.ctx.lineTo(collider.vertices[i].x, collider.vertices[i].y);
+      }
+      this.ctx.closePath();
+      this.ctx.fill();
+    } else {
+      this.roundRect(-sprite.width / 2, -sprite.height / 2, sprite.width, sprite.height, Math.min(6, sprite.width / 4, sprite.height / 4));
+      this.ctx.fill();
     }
 
     this.ctx.restore();
+  }
+
+  private drawEntityDebug(x: number, y: number, angle: number, transform: Transform, collider: Collider, physics?: Physics): void {
+    this.ctx.save();
+    this.ctx.translate(x, y);
+    this.ctx.rotate(angle);
+    this.ctx.lineWidth = 1;
+
+    if (EngineConfig.debug.showBoundingBox) {
+      this.ctx.shadowBlur = 0;
+      this.ctx.strokeStyle = physics?.isSleeping ? "#778394" : "#39d5ff";
+      this.ctx.setLineDash([5, 5]);
+      if (collider.shape === "circle") {
+        this.ctx.beginPath();
+        this.ctx.arc(0, 0, collider.width / 2, 0, Math.PI * 2);
+        this.ctx.stroke();
+      } else if (collider.vertices.length > 0) {
+        this.ctx.beginPath();
+        this.ctx.moveTo(collider.vertices[0].x, collider.vertices[0].y);
+        for (let i = 1; i < collider.vertices.length; i++) this.ctx.lineTo(collider.vertices[i].x, collider.vertices[i].y);
+        this.ctx.closePath();
+        this.ctx.stroke();
+      } else {
+        this.ctx.strokeRect(-collider.width / 2, -collider.height / 2, collider.width, collider.height);
+      }
+    }
+
+    this.ctx.restore();
+
+    if (EngineConfig.debug.showVelocity && physics) {
+      this.ctx.save();
+      this.ctx.strokeStyle = "#6cffb0";
+      this.ctx.lineWidth = 1.5;
+      this.ctx.setLineDash([]);
+      this.ctx.beginPath();
+      this.ctx.moveTo(transform.position.x, transform.position.y);
+      this.ctx.lineTo(transform.position.x + physics.velocity.x * 0.08, transform.position.y + physics.velocity.y * 0.08);
+      this.ctx.stroke();
+      this.ctx.restore();
+    }
+  }
+
+  private drawCollisionDebug(collisionSystem: CollisionSystem): void {
+    if (EngineConfig.debug.showContacts) {
+      this.ctx.save();
+      this.ctx.strokeStyle = "#ff5b7c";
+      this.ctx.lineWidth = 2;
+      for (const point of collisionSystem.getDebugContacts()) {
+        this.ctx.beginPath();
+        this.ctx.moveTo(point.x - 5, point.y);
+        this.ctx.lineTo(point.x + 5, point.y);
+        this.ctx.moveTo(point.x, point.y - 5);
+        this.ctx.lineTo(point.x, point.y + 5);
+        this.ctx.stroke();
+      }
+      this.ctx.restore();
+    }
+
+    if (EngineConfig.debug.showNormals) {
+      this.ctx.save();
+      this.ctx.strokeStyle = "#ffd166";
+      this.ctx.lineWidth = 1.5;
+      for (const item of collisionSystem.getDebugNormals()) {
+        this.ctx.beginPath();
+        this.ctx.moveTo(item.point.x, item.point.y);
+        this.ctx.lineTo(item.point.x + item.normal.x * 28, item.point.y + item.normal.y * 28);
+        this.ctx.stroke();
+      }
+      this.ctx.restore();
+    }
+  }
+
+  private drawGrid(): void {
+    const size = 128;
+    this.ctx.save();
+    this.ctx.strokeStyle = "rgba(255,255,255,0.06)";
+    this.ctx.lineWidth = 1;
+    for (let x = 0; x <= this.cssWidth; x += size) {
+      this.ctx.beginPath();
+      this.ctx.moveTo(x, 0);
+      this.ctx.lineTo(x, this.cssHeight);
+      this.ctx.stroke();
+    }
+    for (let y = 0; y <= this.cssHeight; y += size) {
+      this.ctx.beginPath();
+      this.ctx.moveTo(0, y);
+      this.ctx.lineTo(this.cssWidth, y);
+      this.ctx.stroke();
+    }
+    this.ctx.restore();
+  }
+
+  private roundRect(x: number, y: number, width: number, height: number, radius: number): void {
+    this.ctx.beginPath();
+    this.ctx.moveTo(x + radius, y);
+    this.ctx.lineTo(x + width - radius, y);
+    this.ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+    this.ctx.lineTo(x + width, y + height - radius);
+    this.ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+    this.ctx.lineTo(x + radius, y + height);
+    this.ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+    this.ctx.lineTo(x, y + radius);
+    this.ctx.quadraticCurveTo(x, y, x + radius, y);
+    this.ctx.closePath();
   }
 }

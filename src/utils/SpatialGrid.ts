@@ -15,22 +15,16 @@ export class SpatialGrid {
     this.cells.clear();
   }
 
-  // Convert world position to a grid key string "x,y"
-  private getKey(x: number, y: number): string {
-    const gx = Math.floor(x / this.cellSize);
-    const gy = Math.floor(y / this.cellSize);
-    return `${gx},${gy}`;
-  }
-
   insert(world: World, entity: Entity) {
     const t = world.getComponent<Transform>(entity, "transform")!;
     const c = world.getComponent<Collider>(entity, "collider")!;
+    const bounds = this.getBounds(t, c);
 
     // Find the bounding box of the entity in grid coordinates
-    const startX = Math.floor((t.position.x - c.width / 2) / this.cellSize);
-    const endX = Math.floor((t.position.x + c.width / 2) / this.cellSize);
-    const startY = Math.floor((t.position.y - c.height / 2) / this.cellSize);
-    const endY = Math.floor((t.position.y + c.height / 2) / this.cellSize);
+    const startX = Math.floor(bounds.minX / this.cellSize);
+    const endX = Math.floor(bounds.maxX / this.cellSize);
+    const startY = Math.floor(bounds.minY / this.cellSize);
+    const endY = Math.floor(bounds.maxY / this.cellSize);
 
     // Add entity to every cell it overlaps
     for (let x = startX; x <= endX; x++) {
@@ -48,11 +42,12 @@ export class SpatialGrid {
     const t = world.getComponent<Transform>(entity, "transform")!;
     const c = world.getComponent<Collider>(entity, "collider")!;
     const potential = new Set<Entity>();
+    const bounds = this.getBounds(t, c);
 
-    const startX = Math.floor((t.position.x - c.width / 2) / this.cellSize);
-    const endX = Math.floor((t.position.x + c.width / 2) / this.cellSize);
-    const startY = Math.floor((t.position.y - c.height / 2) / this.cellSize);
-    const endY = Math.floor((t.position.y + c.height / 2) / this.cellSize);
+    const startX = Math.floor(bounds.minX / this.cellSize);
+    const endX = Math.floor(bounds.maxX / this.cellSize);
+    const startY = Math.floor(bounds.minY / this.cellSize);
+    const endY = Math.floor(bounds.maxY / this.cellSize);
 
     for (let x = startX; x <= endX; x++) {
       for (let y = startY; y <= endY; y++) {
@@ -68,5 +63,41 @@ export class SpatialGrid {
       }
     }
     return potential;
+  }
+
+  private getBounds(t: Transform, c: Collider): { minX: number; minY: number; maxX: number; maxY: number } {
+    if (c.shape === "circle") {
+      const r = c.width / 2;
+      return { minX: t.position.x - r, minY: t.position.y - r, maxX: t.position.x + r, maxY: t.position.y + r };
+    }
+
+    if (c.vertices.length > 0) {
+      const cos = Math.cos(t.angle);
+      const sin = Math.sin(t.angle);
+      let minX = Infinity;
+      let minY = Infinity;
+      let maxX = -Infinity;
+      let maxY = -Infinity;
+      for (const v of c.vertices) {
+        const x = t.position.x + v.x * cos - v.y * sin;
+        const y = t.position.y + v.x * sin + v.y * cos;
+        if (x < minX) minX = x;
+        if (y < minY) minY = y;
+        if (x > maxX) maxX = x;
+        if (y > maxY) maxY = y;
+      }
+      return { minX, minY, maxX, maxY };
+    }
+
+    const cos = Math.abs(Math.cos(t.angle));
+    const sin = Math.abs(Math.sin(t.angle));
+    const halfWidth = (c.width / 2) * cos + (c.height / 2) * sin;
+    const halfHeight = (c.width / 2) * sin + (c.height / 2) * cos;
+    return {
+      minX: t.position.x - halfWidth,
+      minY: t.position.y - halfHeight,
+      maxX: t.position.x + halfWidth,
+      maxY: t.position.y + halfHeight,
+    };
   }
 }

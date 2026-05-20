@@ -1,116 +1,667 @@
 <!doctype html>
 <html lang="en">
   <head>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>paper-js</title>
+
+    <title>paper-js physics lab</title>
+
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+
+      :root {
+        --bg: #0b0e13;
+
+        --panel: rgba(15, 18, 24, 0.72);
+
+        --surface: rgba(255, 255, 255, 0.03);
+
+        --border: rgba(255, 255, 255, 0.05);
+
+        --text: #f5f7fb;
+
+        --muted: #8e99ab;
+
+        --accent: #93a7ff;
+
+        --shadow: 0 20px 60px rgba(0, 0, 0, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.02);
+
+        --transition: 180ms cubic-bezier(0.4, 0, 0.2, 1);
+      }
+
+      body {
+        margin: 0;
+        overflow: hidden;
+
+        background: radial-gradient(circle at top, rgba(147, 167, 255, 0.06), transparent 35%), #0b0e13;
+
+        color: var(--text);
+
+        font-family:
+          Inter,
+          system-ui,
+          -apple-system,
+          BlinkMacSystemFont,
+          "Segoe UI",
+          sans-serif;
+      }
+
+      canvas {
+        position: fixed;
+        inset: 0;
+
+        width: 100vw;
+        height: 100vh;
+
+        display: block;
+
+        touch-action: none;
+      }
+
+      .topbar,
+      .panel,
+      .stats {
+        position: fixed;
+
+        z-index: 20;
+
+        background: var(--panel);
+
+        border: 1px solid var(--border);
+
+        backdrop-filter: blur(14px);
+
+        box-shadow: var(--shadow);
+      }
+
+      /* ======================================= */
+
+      .topbar {
+        top: 18px;
+        left: 18px;
+        right: 18px;
+
+        min-height: 68px;
+
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 18px;
+
+        padding: 14px 18px;
+
+        border-radius: 22px;
+
+        animation: topbar-enter 0.5s ease;
+      }
+
+      @keyframes topbar-enter {
+        from {
+          opacity: 0;
+          transform: translateY(-10px);
+        }
+
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+
+        min-width: 140px;
+
+        font-weight: 700;
+
+        font-size: 15px;
+
+        letter-spacing: -0.03em;
+      }
+
+      .brand::before {
+        content: "";
+
+        width: 10px;
+        height: 10px;
+
+        border-radius: 999px;
+
+        background: var(--accent);
+
+        box-shadow: 0 0 16px rgba(147, 167, 255, 0.6);
+      }
+
+      .brand-mark {
+        display: none;
+      }
+
+      .toolbar {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+
+        flex-wrap: wrap;
+      }
+
+      /* ======================================= */
+
+      select,
+      button {
+        height: 40px;
+
+        border-radius: 12px;
+
+        border: 1px solid var(--border);
+
+        background: rgba(255, 255, 255, 0.035);
+
+        color: var(--text);
+
+        font: inherit;
+
+        transition: var(--transition);
+      }
+
+      select {
+        min-width: 220px;
+
+        padding: 0 14px;
+
+        outline: none;
+      }
+
+      button {
+        padding: 0 15px;
+
+        cursor: pointer;
+
+        font-weight: 600;
+
+        letter-spacing: -0.01em;
+      }
+
+      button:hover,
+      select:hover {
+        background: rgba(255, 255, 255, 0.06);
+
+        border-color: rgba(255, 255, 255, 0.08);
+
+        transform: translateY(-1px);
+      }
+
+      button.primary {
+        background: rgba(147, 167, 255, 0.16);
+
+        border-color: rgba(147, 167, 255, 0.18);
+
+        color: white;
+      }
+
+      /* ======================================= */
+
+      .panel {
+        top: 102px;
+        left: 18px;
+
+        width: 320px;
+
+        max-height: calc(100vh - 150px);
+
+        overflow: auto;
+
+        padding: 20px;
+
+        border-radius: 26px;
+
+        transition:
+          opacity 220ms ease,
+          transform 220ms ease;
+
+        animation: panel-enter 0.45s ease;
+      }
+
+      @keyframes panel-enter {
+        from {
+          opacity: 0;
+          transform: translateY(14px);
+        }
+
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      .panel::-webkit-scrollbar {
+        width: 6px;
+      }
+
+      .panel::-webkit-scrollbar-thumb {
+        background: rgba(255, 255, 255, 0.08);
+
+        border-radius: 999px;
+      }
+
+      .panel.hidden {
+        opacity: 0;
+
+        pointer-events: none;
+
+        transform: translateY(14px) scale(0.98);
+      }
+
+      /* ======================================= */
+
+      .section {
+        display: grid;
+
+        gap: 14px;
+
+        padding: 18px 0;
+
+        border-top: 1px solid rgba(255, 255, 255, 0.04);
+      }
+
+      .section:first-child {
+        padding-top: 0;
+
+        border-top: 0;
+      }
+
+      .section-title {
+        font-size: 11px;
+
+        font-weight: 700;
+
+        letter-spacing: 0.12em;
+
+        text-transform: uppercase;
+
+        color: var(--muted);
+      }
+
+      label {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+
+        font-size: 13px;
+
+        color: var(--muted);
+      }
+
+      .control {
+        display: grid;
+        gap: 8px;
+      }
+
+      .control-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+      .close {
+        position: absolute;
+        right: 0px;
+        top: 0px;
+      }
+
+      .control-row span {
+        font-size: 12px;
+
+        color: white;
+
+        font-weight: 600;
+
+        font-variant-numeric: tabular-nums;
+      }
+
+      input[type="range"] {
+        width: 100%;
+
+        accent-color: var(--accent);
+      }
+
+      input[type="checkbox"] {
+        width: 15px;
+        height: 15px;
+
+        accent-color: var(--accent);
+      }
+
+      /* ======================================= */
+
+      .stats {
+        bottom: 18px;
+
+        left: 50%;
+
+        transform: translateX(-50%);
+
+        min-height: 42px;
+
+        display: flex;
+        align-items: center;
+        gap: 16px;
+
+        padding: 0 18px;
+
+        border-radius: 999px;
+
+        background: rgba(12, 15, 20, 0.62);
+
+        backdrop-filter: blur(10px);
+
+        animation: stats-enter 0.55s ease;
+      }
+
+      @keyframes stats-enter {
+        from {
+          opacity: 0;
+          transform: translateX(-50%) translateY(-8px);
+        }
+
+        to {
+          opacity: 1;
+          transform: translateX(-50%) translateY(0);
+        }
+      }
+
+      .stats.hidden {
+        opacity: 0;
+
+        pointer-events: none;
+
+        transform: translateX(-50%) translateY(-12px);
+      }
+
+      .stat {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+      }
+
+      .stat span {
+        font-size: 11px;
+
+        color: var(--muted);
+
+        letter-spacing: 0.02em;
+      }
+
+      .stat strong {
+        font-size: 12px;
+
+        font-weight: 700;
+
+        color: white;
+
+        font-variant-numeric: tabular-nums;
+
+        font-feature-settings: "tnum";
+
+        text-rendering: geometricPrecision;
+
+        -webkit-font-smoothing: antialiased;
+      }
+
+      /* ======================================= */
+
+      @media (max-width: 780px) {
+        .topbar {
+          flex-direction: column;
+
+          align-items: flex-start;
+        }
+
+        .toolbar {
+          width: 100%;
+        }
+
+        select {
+          min-width: 100%;
+        }
+
+        .panel {
+          width: calc(100vw - 36px);
+
+          max-height: 48vh;
+        }
+
+        .stats {
+          top: auto;
+
+          bottom: 18px;
+
+          width: calc(100vw - 36px);
+
+          justify-content: center;
+
+          flex-wrap: wrap;
+        }
+      }
+    </style>
   </head>
-  <style>
-    * {
-      margin: 0px;
-    }
-    #ui-overlay {
-      position: absolute;
-      width: 130px;
-      top: 10px;
-      right: 10px;
-      background: rgba(0, 0, 0, 0.8);
-      color: rgb(237, 237, 237);
-      font-family: "Poppins", sans-serif;
-      padding: 15px;
-      border-radius: 8px;
-      pointer-events: all;
-    }
-    .panel {
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-      opacity: 0.8;
-    }
-    h3 {
-      margin: 0 0 10px 0;
-      font-size: 14px;
-    }
-    label {
-      font-size: 12px;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      gap: 5px;
-    }
-    hr {
-      border: 0;
-      border-top: 1px solid #333;
-      margin: 5px 0;
-    }
-    input[type="range"] {
-      width: 100%;
-    }
-    button {
-      height: 30px;
-      background-color: rgba(255, 255, 255, 0.1);
-      color: #fff;
-      border: none;
-      outline: none;
-      border-radius: 5px;
-    }
-    canvas {
-      width: 100vw;
-      height: 100vh;
-      display: block;
-      touch-action: none;
-    }
-    #settings {
-      overflow: hidden;
-      max-height: 0;
-      opacity: 0;
-      transform: translateY(-10px) scale(0.98);
 
-      transition:
-        max-height 0.4s ease,
-        opacity 0.25s ease,
-        transform 0.35s ease;
-      pointer-events: none;
-    }
-
-    body.debug #settings {
-      max-height: 500px;
-      opacity: 1;
-      transform: translateY(0) scale(1);
-      pointer-events: auto;
-    }
-  </style>
   <body>
-    <div class="canvas">
-      <canvas class="canvas" id="game" style="width: 100svw; height: 100svh; margin-left: auto; margin-right: auto"></canvas>
+    <canvas id="game"></canvas>
 
-      <div id="ui-overlay">
-        <div class="panel">
-          <h3>Engine Debug</h3>
-          <label><input type="checkbox" id="debug-toggle" /> Debug Mode</label>
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-mark"></div>
+        <span>paper-js</span>
+      </div>
 
-          <hr />
-          <div id="settings">
-            <label><input type="checkbox" id="show-vel" checked /> Velocity Vectors</label>
-            <label><input type="checkbox" id="show-aabb" checked /> Bounding Boxes</label>
-            <label><input type="checkbox" id="show-contacts" checked /> Contact Points</label>
-            <hr />
+      <div class="toolbar">
+        <select id="scene-select" aria-label="Scene">
+          <option value="sandbox">Physics Sandbox</option>
 
-            <label>Substeps: <span id="substep-val">8</span></label>
-            <input type="range" id="substep-slider" min="1" max="16" value="8" />
+          <option value="constraints">Constraint Playground</option>
+          <option value="particles">Particle Playground</option>
+          <option value="stress">Collision Stress Test</option>
+          <option value="gravity-well">Gravity Well</option>
+        </select>
 
-            <label>bounce: <span id="bounce-val">5</span></label>
-            <input type="range" id="bounce-slider" min="0" max="100" value="150" />
+        <button class="primary" id="spawn">Create</button>
 
-            <label>Particles: <span id="particle-count">50</span></label>
-            <input type="range" id="particle-count-slider" min="0" max="200" value="50" />
+        <button id="reload">Restart</button>
+
+        <button id="toggle-panel">Controls</button>
+
+        <button id="toggle-stats">Metrics</button>
+      </div>
+    </header>
+
+    <aside class="panel">
+      <div class="section">
+        <span id="back-btn">
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M15 18l-6-6 6-6" />
+          </svg>
+        </span>
+        <div class="section-title">Simulation</div>
+
+        <label>
+          <span>Pause</span>
+          <input type="checkbox" id="pause-toggle" />
+        </label>
+
+        <div class="control">
+          <div class="control-row">
+            <label for="timescale-slider"> Time Scale </label>
+
+            <span id="timescale-val"> 1.00x </span>
           </div>
 
-          <button id="reload">Reload</button>
+          <input type="range" id="timescale-slider" min="10" max="150" value="100" />
+        </div>
+
+        <div class="control">
+          <div class="control-row">
+            <label for="gravity-slider"> Gravity </label>
+
+            <span id="gravity-val"> 981 </span>
+          </div>
+
+          <input type="range" id="gravity-slider" min="-1400" max="1800" value="981" />
+        </div>
+
+        <div class="control">
+          <div class="control-row">
+            <label for="solver-slider"> Solver Iterations </label>
+
+            <span id="solver-val"> 8 </span>
+          </div>
+
+          <input type="range" id="solver-slider" min="1" max="20" value="8" />
         </div>
       </div>
-    </div>
+
+      <div class="section">
+        <div class="section-title">Material</div>
+
+        <div class="control">
+          <div class="control-row">
+            <label for="friction-slider"> Friction </label>
+
+            <span id="friction-val"> 0.40 </span>
+          </div>
+
+          <input type="range" id="friction-slider" min="0" max="100" value="40" />
+        </div>
+
+        <div class="control">
+          <div class="control-row">
+            <label for="bounce-slider"> Restitution </label>
+
+            <span id="bounce-val"> 0.50 </span>
+          </div>
+
+          <input type="range" id="bounce-slider" min="0" max="100" value="50" />
+        </div>
+
+        <div class="control">
+          <div class="control-row">
+            <label for="particle-count-slider"> Scene Count </label>
+
+            <span id="particle-count"> 80 </span>
+          </div>
+
+          <input type="range" id="particle-count-slider" min="10" max="360" value="80" />
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">Debug</div>
+
+        <label>
+          <span>Debug Overlay</span>
+          <input type="checkbox" id="debug-toggle" />
+        </label>
+
+        <label>
+          <span>Velocity</span>
+          <input type="checkbox" id="show-vel" checked />
+        </label>
+
+        <label>
+          <span>Bounds</span>
+          <input type="checkbox" id="show-aabb" checked />
+        </label>
+
+        <label>
+          <span>Contacts</span>
+          <input type="checkbox" id="show-contacts" checked />
+        </label>
+
+        <label>
+          <span>Normals</span>
+          <input type="checkbox" id="show-normals" checked />
+        </label>
+
+        <label>
+          <span>Grid</span>
+          <input type="checkbox" id="show-grid" />
+        </label>
+
+        <label>
+          <span>Sleeping</span>
+          <input type="checkbox" id="show-sleeping" checked />
+        </label>
+      </div>
+
+      <div class="section">
+        <div class="section-title">Entity</div>
+
+        <button id="delete-selected">Delete Held Body</button>
+
+        <button id="clear">Reload Scene</button>
+      </div>
+    </aside>
+
+    <footer class="stats">
+      <div class="stat">
+        <span>FPS</span>
+        <strong id="fps">60</strong>
+      </div>
+
+      <div class="stat">
+        <span>Entities</span>
+        <strong id="entity-count">0</strong>
+      </div>
+
+      <div class="stat">
+        <span>Contacts</span>
+        <strong id="collision-count">0</strong>
+      </div>
+
+      <div class="stat">
+        <span>Pairs</span>
+        <strong id="pair-count">0</strong>
+      </div>
+
+      <div class="stat">
+        <span>Steps</span>
+        <strong id="step-count">0</strong>
+      </div>
+
+      <div class="stat">
+        <span>State</span>
+        <strong id="sim-state">Running</strong>
+      </div>
+    </footer>
+
+    <script>
+      const panel = document.querySelector(".panel");
+
+      const stats = document.querySelector(".stats");
+
+      const togglePanel = document.getElementById("toggle-panel");
+
+      const toggleStats = document.getElementById("toggle-stats");
+
+      togglePanel.addEventListener("click", () => {
+        panel.classList.toggle("hidden");
+      });
+
+      toggleStats.addEventListener("click", () => {
+        stats.classList.toggle("hidden");
+      });
+
+      const backbtn = document.getElementById("back-btn");
+      backbtn.addEventListener("click", () => {
+        panel.classList.toggle("hidden");
+      });
+    </script>
+
+    <script type="module" src="/src/main.ts"></script>
   </body>
-  <script type="module" src="/src/main.ts"></script>
 </html>

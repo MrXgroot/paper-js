@@ -18,6 +18,18 @@ export class World {
     this.nextEntityId = 0;
     this.components = new Map<ComponentType, Map<Entity, any>>();
   }
+
+  destroyEntity(entity: Entity) {
+    this.entities.delete(entity);
+    for (const componentMap of this.components.values()) {
+      componentMap.delete(entity);
+    }
+  }
+
+  entityCount(): number {
+    return this.entities.size;
+  }
+
   addComponent(entity: Entity, component: Component) {
     if (!this.components.has(component.type)) {
       this.components.set(component.type, new Map());
